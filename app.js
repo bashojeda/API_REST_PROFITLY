@@ -9,12 +9,13 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize database on startup
+// Initialize database on startup (non-blocking)
 initializeDatabase().then(() => {
     console.log('🚀 Database initialization complete');
 }).catch(err => {
     console.error('❌ Failed to initialize database:', err);
-    process.exit(1); // Exit if database fails
+    // Don't exit process, let the app start anyway
+    console.log('⚠️ App starting without database - check Railway logs');
 });
 
 // Middleware

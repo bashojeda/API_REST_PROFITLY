@@ -33,12 +33,16 @@ async function initializeDatabase() {
         console.log('🔄 Connecting to database server...');
         connection = await mysql.createConnection(tempConfig);
 
-        // Create database if it doesn't exist
-        await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-        console.log(`✅ Database '${dbConfig.database}' ready`);
-
-        // Switch to the database
-        await connection.execute(`USE \`${dbConfig.database}\``);
+        if (!process.env.DATABASE_URL) {
+            // Only create the database in local development.
+            await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+            console.log(`✅ Database '${dbConfig.database}' ready`);
+            await connection.execute(`USE \`${dbConfig.database}\``);
+        } else {
+            // Railway already provides the database and name.
+            await connection.changeUser({ database: dbConfig.database });
+            console.log(`✅ Connected to existing Railway database '${dbConfig.database}'`);
+        }
 
         // Read and execute schema
         const schemaPath = path.join(__dirname, '..', 'database.sql');
@@ -49,7 +53,7 @@ async function initializeDatabase() {
         const statements = schema
             .split(';')
             .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.toUpperCase().startsWith('CREATE DATABASE') && !stmt.toUpperCase().startsWith('USE '));
 
         console.log('🔄 Creating tables...');
         for (const statement of statements) {

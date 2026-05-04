@@ -48,7 +48,8 @@ const testChartsData = async (req, res) => {
                 DATE_FORMAT(FROM_UNIXTIME(createdAtMillis / 1000), '%m/%d') as label,
                 SUM(sellingPrice * quantitySold) as value
             FROM product_sales
-            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)),
+                     DATE_FORMAT(FROM_UNIXTIME(createdAtMillis / 1000), '%m/%d')
             ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
@@ -59,7 +60,7 @@ const testChartsData = async (req, res) => {
                 SUM(productionCost * quantitySold) as prod_cost
             FROM product_sales
             GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
-            ORDER BY date
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
         res.status(200).json({

@@ -57,7 +57,8 @@ const getCharts = async (req, res) => {
                 DATE_FORMAT(FROM_UNIXTIME(createdAtMillis / 1000), '%m/%d') as label,
                 SUM(sellingPrice * quantitySold) as value
             FROM product_sales
-            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)),
+                     DATE_FORMAT(FROM_UNIXTIME(createdAtMillis / 1000), '%m/%d')
             ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
@@ -70,7 +71,7 @@ const getCharts = async (req, res) => {
                 SUM(productionCost * quantitySold) as prod_cost
             FROM product_sales
             GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
-            ORDER BY date
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
         const [dailyExpenses] = await pool.execute(`
@@ -79,7 +80,7 @@ const getCharts = async (req, res) => {
                 SUM(amount) as exp_cost
             FROM expenses
             GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
-            ORDER BY date
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
         // Combine into profit data
@@ -168,9 +169,9 @@ const getInsights = async (req, res) => {
                 LEFT JOIN (
                     SELECT DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as e_date, SUM(amount) as exp_sum
                     FROM expenses
-                    GROUP BY e_date
+                    GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
                 ) e ON e.e_date = DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-                GROUP BY date
+                GROUP BY DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
             ) t
             ORDER BY date DESC
             LIMIT 3

@@ -77,28 +77,30 @@ const testChartsData = async (req, res) => {
 
 const testInsightsData = async (req, res) => {
     try {
-        const [lastProfits] = await pool.execute(`
-            SELECT date, revenue - (prod_cost + exp_cost) as profit FROM (
-                SELECT
-                    DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000)) as date,
-                    SUM(ps.sellingPrice * ps.quantitySold) as revenue,
-                    SUM(ps.productionCost * ps.quantitySold) as prod_cost,
-                    COALESCE(e.exp_sum, 0) as exp_cost
-                FROM product_sales ps
-                LEFT JOIN (
-                    SELECT DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as e_date, SUM(amount) as exp_sum
-                    FROM expenses
-                    GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
-                ) e ON e.e_date = DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-                GROUP BY DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-            ) t
-            ORDER BY date DESC
+        const [dailyData] = await pool.execute(`
+            SELECT
+                DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as date,
+                SUM(sellingPrice * quantitySold) as revenue,
+                SUM(productionCost * quantitySold) as prod_cost
+            FROM product_sales
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)) DESC
+            LIMIT 3
+        `);
+
+        const [expenseData] = await pool.execute(`
+            SELECT
+                DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as date,
+                SUM(amount) as exp_cost
+            FROM expenses
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)) DESC
             LIMIT 3
         `);
 
         res.status(200).json({
-            lastProfits,
-            count: lastProfits.length
+            dailyData,
+            expenseData
         });
     } catch (error) {
         console.error('Error in test insights data:', error);

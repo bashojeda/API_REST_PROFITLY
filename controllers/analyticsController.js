@@ -157,25 +157,47 @@ const getInsights = async (req, res) => {
             insights.push("Great job! Your profit margin is healthy.");
         }
 
-        // Declining trend (last 3 days decreasing)
-        const [lastProfits] = await pool.execute(`
-            SELECT date, revenue - (prod_cost + exp_cost) as profit FROM (
-                SELECT
-                    DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000)) as date,
-                    SUM(ps.sellingPrice * ps.quantitySold) as revenue,
-                    SUM(ps.productionCost * ps.quantitySold) as prod_cost,
-                    COALESCE(e.exp_sum, 0) as exp_cost
-                FROM product_sales ps
-                LEFT JOIN (
-                    SELECT DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as e_date, SUM(amount) as exp_sum
-                    FROM expenses
-                    GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
-                ) e ON e.e_date = DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-                GROUP BY DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-            ) t
-            ORDER BY date DESC
+        // Declining trend (last 3 days decreasing) - simplified to avoid ONLY_FULL_GROUP_BY issues
+        const [dailyData] = await pool.execute(`
+            SELECT
+                DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as date,
+                SUM(sellingPrice * quantitySold) as revenue,
+                SUM(productionCost * quantitySold) as prod_cost
+            FROM product_sales
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)) DESC
             LIMIT 3
         `);
+
+        const [expenseData] = await pool.execute(`
+            SELECT
+                DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as date,
+                SUM(amount) as exp_cost
+            FROM expenses
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000)) DESC
+            LIMIT 3
+        `);
+
+        // Combine daily data with expense data
+        const profitByDate = {};
+        dailyData.forEach(row => {
+            const dateStr = row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date;
+            profitByDate[dateStr] = {
+                profit: (parseFloat(row.revenue) || 0) - (parseFloat(row.prod_cost) || 0)
+            };
+        });
+        expenseData.forEach(row => {
+            const dateStr = row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date;
+            if (profitByDate[dateStr]) {
+                profitByDate[dateStr].profit -= parseFloat(row.exp_cost) || 0;
+            }
+        });
+
+        const lastProfits = Object.entries(profitByDate)
+            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+            .slice(0, 3)
+            .map(([date, data]) => ({ date, profit: data.profit }));
 
         if (lastProfits.length >= 3) {
             const profits = lastProfits.reverse().map(row => parseFloat(row.profit || 0));

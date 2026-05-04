@@ -61,28 +61,7 @@ const getCharts = async (req, res) => {
             ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
         `);
 
-        // Profit over time: daily revenue - daily costs
-        const [profitData] = await pool.execute(`
-            SELECT
-                DATE_FORMAT(d.date, '%m/%d') as label,
-                (d.revenue - d.costs) as value
-            FROM (
-                SELECT
-                    DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000)) as date,
-                    SUM(ps.sellingPrice * ps.quantitySold) as revenue,
-                    SUM(ps.productionCost * ps.quantitySold) as prod_cost,
-                    COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE DATE(FROM_UNIXTIME(e.createdAtMillis / 1000)) = DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))), 0) as exp_cost
-                FROM product_sales ps
-                GROUP BY DATE(FROM_UNIXTIME(ps.createdAtMillis / 1000))
-            ) d
-            SET d.costs = d.prod_cost + d.exp_cost
-            ORDER BY d.date
-        `);
-
-        // Note: The above query might need adjustment; MySQL doesn't support SET in subquery like that.
-        // Alternative: calculate in application or use UNION, but for simplicity, let's fetch separately.
-
-        // Actually, better to fetch daily revenues and costs separately, then combine in JS.
+        // Profit over time is calculated below by combining daily revenues and expenses in JS.
 
         const [dailyRevenues] = await pool.execute(`
             SELECT

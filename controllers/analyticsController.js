@@ -85,19 +85,20 @@ const getCharts = async (req, res) => {
         // Combine into profit data
         const profitMap = new Map();
         dailyRevenues.forEach(row => {
-            const date = row.date.toISOString().split('T')[0]; // YYYY-MM-DD
-            profitMap.set(date, {
+            // Handle date as either Date object or string
+            const dateStr = row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date;
+            profitMap.set(dateStr, {
                 revenue: parseFloat(row.revenue || 0),
                 prod_cost: parseFloat(row.prod_cost || 0),
                 exp_cost: 0
             });
         });
         dailyExpenses.forEach(row => {
-            const date = row.date.toISOString().split('T')[0];
-            if (profitMap.has(date)) {
-                profitMap.get(date).exp_cost = parseFloat(row.exp_cost || 0);
+            const dateStr = row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date;
+            if (profitMap.has(dateStr)) {
+                profitMap.get(dateStr).exp_cost = parseFloat(row.exp_cost || 0);
             } else {
-                profitMap.set(date, {
+                profitMap.set(dateStr, {
                     revenue: 0,
                     prod_cost: 0,
                     exp_cost: parseFloat(row.exp_cost || 0)
@@ -116,7 +117,7 @@ const getCharts = async (req, res) => {
         // Format salesOverTime
         const salesOverTime = salesData.map(row => ({
             label: row.label,
-            value: parseFloat(row.value.toFixed(2))
+            value: parseFloat(parseFloat(row.value).toFixed(2))
         }));
 
         res.status(200).json({

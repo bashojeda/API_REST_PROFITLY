@@ -35,22 +35,20 @@ async function initializeDatabase() {
             };
         }
 
-        // Connect without database first
-        const tempConfig = { ...dbConfig };
-        delete tempConfig.database;
-
         console.log('🔄 Connecting to database server...');
-        connection = await mysql.createConnection(tempConfig);
+        if (!process.env.DATABASE_URL && !process.env.MYSQL_URL && !process.env.MYSQL_PUBLIC_URL && !process.env.MYSQL_HOST) {
+            const tempConfig = { ...dbConfig };
+            delete tempConfig.database;
+            connection = await mysql.createConnection(tempConfig);
 
-        if (!process.env.DATABASE_URL && !process.env.MYSQL_URL && !process.env.MYSQL_PUBLIC_URL) {
-            // Only create the database in local development.
+            // Local development: create the database if needed.
             await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
             console.log(`✅ Database '${dbConfig.database}' ready`);
             await connection.query(`USE \`${dbConfig.database}\``);
         } else {
-            // Railway already provides the database and name.
-            await connection.changeUser({ database: dbConfig.database });
-            console.log(`✅ Connected to existing Railway database '${dbConfig.database}'`);
+            // Railway or configured DB: connect directly to the provided database.
+            connection = await mysql.createConnection(dbConfig);
+            console.log(`✅ Connected to existing database '${dbConfig.database}'`);
         }
 
         // Read and execute schema
@@ -67,7 +65,7 @@ async function initializeDatabase() {
         console.log('🔄 Creating tables...');
         for (const statement of statements) {
             if (statement.trim()) {
-                await connection.execute(statement);
+                await connection.query(statement);
             }
         }
 

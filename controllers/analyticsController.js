@@ -6,19 +6,19 @@ const calculateSummary = async () => {
     const [revenueResult] = await pool.execute(
         'SELECT SUM(sellingPrice * quantitySold) as totalRevenue FROM product_sales'
     );
-    const totalRevenue = revenueResult[0].totalRevenue || 0;
+    const totalRevenue = revenueResult?.[0]?.totalRevenue || 0;
 
     // Production Cost: SUM(productionCost * quantitySold)
     const [prodCostResult] = await pool.execute(
         'SELECT SUM(productionCost * quantitySold) as productionCost FROM product_sales'
     );
-    const productionCost = prodCostResult[0].productionCost || 0;
+    const productionCost = prodCostResult?.[0]?.productionCost || 0;
 
     // Expenses: SUM(amount)
     const [expensesResult] = await pool.execute(
         'SELECT SUM(amount) as totalExpenses FROM expenses'
     );
-    const totalExpenses = expensesResult[0].totalExpenses || 0;
+    const totalExpenses = expensesResult?.[0]?.totalExpenses || 0;
 
     // Total Costs: production cost + expenses
     const totalCosts = productionCost + totalExpenses;

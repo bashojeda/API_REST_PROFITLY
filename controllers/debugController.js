@@ -20,23 +20,35 @@ const testConnection = async (req, res) => {
     }
 };
 
-const testAnalytics = async (req, res) => {
+const testChartsData = async (req, res) => {
     try {
-        const [revenueResult] = await pool.execute(
-            'SELECT SUM(sellingPrice * quantitySold) as totalRevenue FROM product_sales'
-        );
-        console.log('Revenue result:', revenueResult);
-        
-        const totalRevenue = revenueResult?.[0]?.totalRevenue || 0;
-        console.log('Total revenue:', totalRevenue);
-        
+        const [salesData] = await pool.execute(`
+            SELECT
+                DATE_FORMAT(FROM_UNIXTIME(createdAtMillis / 1000), '%m/%d') as label,
+                SUM(sellingPrice * quantitySold) as value
+            FROM product_sales
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+        `);
+
+        const [dailyRevenues] = await pool.execute(`
+            SELECT
+                DATE(FROM_UNIXTIME(createdAtMillis / 1000)) as date,
+                SUM(sellingPrice * quantitySold) as revenue,
+                SUM(productionCost * quantitySold) as prod_cost
+            FROM product_sales
+            GROUP BY DATE(FROM_UNIXTIME(createdAtMillis / 1000))
+            ORDER BY date
+        `);
+
         res.status(200).json({
-            debug: 'Analytics query executed',
-            revenueResult,
-            totalRevenue
+            salesData,
+            dailyRevenues,
+            sampleSalesData: salesData[0],
+            sampleDailyRevenues: dailyRevenues[0]
         });
     } catch (error) {
-        console.error('Error in test analytics:', error);
+        console.error('Error in test charts data:', error);
         res.status(500).json({ error: error.message, stack: error.stack });
     }
 };
@@ -44,5 +56,6 @@ const testAnalytics = async (req, res) => {
 module.exports = {
     getTables,
     testConnection,
-    testAnalytics
+    testAnalytics,
+    testChartsData
 };

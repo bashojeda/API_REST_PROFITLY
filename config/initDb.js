@@ -8,14 +8,23 @@ async function initializeDatabase() {
     try {
         // Get database config (same as db.js)
         let dbConfig;
-        if (process.env.DATABASE_URL) {
-            const url = new URL(process.env.DATABASE_URL);
+        if (process.env.DATABASE_URL || process.env.MYSQL_URL) {
+            const rawUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+            const url = new URL(rawUrl);
             dbConfig = {
                 host: url.hostname,
                 user: url.username,
                 password: url.password,
-                database: url.pathname.slice(1),
+                database: url.pathname.replace(/^\//, ''),
                 port: url.port || 3306
+            };
+        } else if (process.env.MYSQL_HOST) {
+            dbConfig = {
+                host: process.env.MYSQL_HOST,
+                user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+                password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+                database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'profitly_db',
+                port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306
             };
         } else {
             dbConfig = {

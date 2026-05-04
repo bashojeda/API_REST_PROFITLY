@@ -1,12 +1,21 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const initializeDatabase = require('./config/initDb');
 const salesRoutes = require('./routes/salesRoutes');
 const expensesRoutes = require('./routes/expensesRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize database on startup
+initializeDatabase().then(() => {
+    console.log('🚀 Database initialization complete');
+}).catch(err => {
+    console.error('❌ Failed to initialize database:', err);
+    process.exit(1); // Exit if database fails
+});
 
 // Middleware
 app.use(cors());

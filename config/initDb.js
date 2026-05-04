@@ -1,12 +1,9 @@
 const mysql = require('mysql2/promise');
-const fs = require('fs');
-const path = require('path');
 
 async function initializeDatabase() {
     let connection;
 
     try {
-        // Get database config (same as db.js)
         let dbConfig;
         const urlSource = process.env.DATABASE_URL || process.env.MYSQL_URL || process.env.MYSQL_PUBLIC_URL;
         if (urlSource) {
@@ -40,37 +37,39 @@ async function initializeDatabase() {
             const tempConfig = { ...dbConfig };
             delete tempConfig.database;
             connection = await mysql.createConnection(tempConfig);
-
-            // Local development: create the database if needed.
             await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
             console.log(`✅ Database '${dbConfig.database}' ready`);
             await connection.query(`USE \`${dbConfig.database}\``);
         } else {
-            // Railway or configured DB: connect directly to the provided database.
             connection = await mysql.createConnection(dbConfig);
             console.log(`✅ Connected to existing database '${dbConfig.database}'`);
         }
 
-        // Read and execute schema
-        const schemaPath = path.join(__dirname, '..', 'database.sql');
-        console.log('🔄 Reading database schema...');
-        const schema = fs.readFileSync(schemaPath, 'utf8');
-
-        // Split schema into individual statements and execute
-        const statements = schema
-            .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.toUpperCase().startsWith('CREATE DATABASE') && !stmt.toUpperCase().startsWith('USE '));
+        const statements = [
+            `CREATE TABLE IF NOT EXISTS product_sales (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                productName VARCHAR(255) NOT NULL,
+                sellingPrice DECIMAL(10,2) NOT NULL,
+                productionCost DECIMAL(10,2) NOT NULL,
+                quantitySold INT NOT NULL,
+                createdAtMillis BIGINT NOT NULL
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_product_sales_created_at ON product_sales (createdAtMillis)`,
+            `CREATE TABLE IF NOT EXISTS expenses (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                description VARCHAR(255) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                createdAtMillis BIGINT NOT NULL
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses (createdAtMillis)`
+        ];
 
         console.log('🔄 Creating tables...');
         for (const statement of statements) {
-            if (statement.trim()) {
-                await connection.query(statement);
-            }
+            await connection.query(statement);
         }
 
-        console.log('✅ Database tables created successfully');
-
+        console.log('✅ Database tables ready');
     } catch (error) {
         console.error('❌ Database initialization failed:', error.message);
         throw error;

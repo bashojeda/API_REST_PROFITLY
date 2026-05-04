@@ -20,7 +20,29 @@ const testConnection = async (req, res) => {
     }
 };
 
+const testAnalytics = async (req, res) => {
+    try {
+        const [revenueResult] = await pool.execute(
+            'SELECT SUM(sellingPrice * quantitySold) as totalRevenue FROM product_sales'
+        );
+        console.log('Revenue result:', revenueResult);
+        
+        const totalRevenue = revenueResult?.[0]?.totalRevenue || 0;
+        console.log('Total revenue:', totalRevenue);
+        
+        res.status(200).json({
+            debug: 'Analytics query executed',
+            revenueResult,
+            totalRevenue
+        });
+    } catch (error) {
+        console.error('Error in test analytics:', error);
+        res.status(500).json({ error: error.message, stack: error.stack });
+    }
+};
+
 module.exports = {
     getTables,
-    testConnection
+    testConnection,
+    testAnalytics
 };

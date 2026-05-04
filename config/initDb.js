@@ -46,27 +46,44 @@ async function initializeDatabase() {
         }
 
         const statements = [
-            `CREATE TABLE IF NOT EXISTS product_sales (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                productName VARCHAR(255) NOT NULL,
-                sellingPrice DECIMAL(10,2) NOT NULL,
-                productionCost DECIMAL(10,2) NOT NULL,
-                quantitySold INT NOT NULL,
-                createdAtMillis BIGINT NOT NULL
-            )`,
-            `CREATE INDEX IF NOT EXISTS idx_product_sales_created_at ON product_sales (createdAtMillis)`,
-            `CREATE TABLE IF NOT EXISTS expenses (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                description VARCHAR(255) NOT NULL,
-                amount DECIMAL(10,2) NOT NULL,
-                createdAtMillis BIGINT NOT NULL
-            )`,
-            `CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses (createdAtMillis)`
+            {
+                name: 'product_sales',
+                sql: `CREATE TABLE IF NOT EXISTS product_sales (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    productName VARCHAR(255) NOT NULL,
+                    sellingPrice DECIMAL(10,2) NOT NULL,
+                    productionCost DECIMAL(10,2) NOT NULL,
+                    quantitySold INT NOT NULL,
+                    createdAtMillis BIGINT NOT NULL
+                )`
+            },
+            {
+                name: 'product_sales_index',
+                sql: `CREATE INDEX IF NOT EXISTS idx_product_sales_created_at ON product_sales (createdAtMillis)`
+            },
+            {
+                name: 'expenses',
+                sql: `CREATE TABLE IF NOT EXISTS expenses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    description VARCHAR(255) NOT NULL,
+                    amount DECIMAL(10,2) NOT NULL,
+                    createdAtMillis BIGINT NOT NULL
+                )`
+            },
+            {
+                name: 'expenses_index',
+                sql: `CREATE INDEX IF NOT EXISTS idx_expenses_created_at ON expenses (createdAtMillis)`
+            }
         ];
 
         console.log('🔄 Creating tables...');
-        for (const statement of statements) {
-            await connection.query(statement);
+        for (const item of statements) {
+            try {
+                await connection.query(item.sql);
+                console.log(`✅ ${item.name} created`);
+            } catch (err) {
+                console.error(`❌ Error creating ${item.name}:`, err.message);
+            }
         }
 
         console.log('✅ Database tables ready');

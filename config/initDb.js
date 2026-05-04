@@ -42,11 +42,11 @@ async function initializeDatabase() {
         console.log('🔄 Connecting to database server...');
         connection = await mysql.createConnection(tempConfig);
 
-        if (!process.env.DATABASE_URL) {
+        if (!process.env.DATABASE_URL && !process.env.MYSQL_URL && !process.env.MYSQL_PUBLIC_URL) {
             // Only create the database in local development.
-            await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+            await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
             console.log(`✅ Database '${dbConfig.database}' ready`);
-            await connection.execute(`USE \`${dbConfig.database}\``);
+            await connection.query(`USE \`${dbConfig.database}\``);
         } else {
             // Railway already provides the database and name.
             await connection.changeUser({ database: dbConfig.database });
